@@ -62,6 +62,7 @@ namespace ShopeeCrawler
 
             browser.Navigate().GoToUrl("https://shopee.vn");
 
+            System.Threading.Thread.Sleep(1000);
             var closePopUpBtn = browser.FindElement(By.CssSelector(".shopee-popup__close-btn"));
 
             closePopUpBtn.Click();
@@ -92,6 +93,77 @@ namespace ShopeeCrawler
             foreach(var link in listProductLink)
             {
                 browser.Navigate().GoToUrl(link);
+
+
+
+                // Product title
+                string html = browser.PageSource;
+
+                string productTitle = Regex.Match(html, "@type\":\"Product\",\"name\":\"(.*?)\"").Groups[1].Value;
+
+                // Size
+
+                // Color
+                //Giá sản phẩm
+
+                string productPrice = browser.FindElement(By.CssSelector("._3e_UQT")).Text.Replace("₫","");
+
+                //string productPrice = Regex.Match(html, "current-price item-card-special__current-price--special\">₫(.*?)</div></").Groups[1].Value;
+
+                if (productPrice.Contains("-"))
+                {
+                    productPrice = Regex.Match(productPrice, "(.*?) -").Groups[1].Value;
+                }
+                //Ảnh sản phẩm 1
+                List<string> productImageList = new List<string>();
+                var listImageElement = browser.FindElements(By.CssSelector("._12uy03"));
+                if(listImageElement.Count > 0)
+                {
+                    foreach(var imageElement in listImageElement)
+                    {
+                        string style = imageElement.GetAttribute("style");
+                        string bg = Regex.Match(style, "background-image: url\\(\"(.*?)_tn\"\\); background-size: contain; background-repeat: no-repeat;").Groups[1].Value;
+                        productImageList.Add(bg);
+
+                    }
+                    string productImage = String.Join(", ", productImageList.ToArray());
+                }
+                //Ảnh sản phẩm 2
+                //Ảnh sản phẩm 3
+                //Ảnh sản phẩm 4
+                //Danh mục
+                List<string> listCategory = new List<string>();
+                var categories = browser.FindElements(By.CssSelector("._3YDLCj._3LWINq"));
+                string productCategory = "";
+                for (int j = 1; j < categories.Count; j++)
+                {
+                    string categoryItem;
+                    if (j != categories.Count - 1)
+                    {
+                        categoryItem = categories[j].Text + ">";
+                    }
+                    else
+                    {
+                        categoryItem = categories[j].Text;
+                    }
+                    productCategory += categoryItem;
+                }
+                //Thương hiệu
+                string productBrand = browser.FindElements(By.XPath("//label[text()='Thương hiệu']/following-sibling::div"))[0].Text;
+                //Gửi từ
+                string productSendFrom = browser.FindElements(By.XPath("//label[text()='Gửi từ']/following-sibling::div"))[0].Text;
+
+
+                //Mô tả sản phẩm
+                string productDescription = browser.FindElements(By.XPath("//div[@class='_3yZnxJ']/child::span"))[0].Text;
+                productDescription = productDescription.Replace("\n", " ").Replace("\r", " ").Replace("\r\n", " ");
+
+
+                //Đánh giá sản phẩm
+                string productRating = browser.FindElement(By.CssSelector(".product-rating-overview__rating-score")).Text;
+                string rating = Regex.Match(html, "\"ratingValue\":\"(\\d.*?)\"}}</sc").Groups[1].Value;
+                //Link sản phẩm
+                string a = "VI XINH DEP CUA ANH HUYNH";
 
             }
 
