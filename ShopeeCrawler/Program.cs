@@ -1,5 +1,7 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Interactions;
+
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -14,7 +16,7 @@ namespace ShopeeCrawler
             WoocommerceProducts outputProduct = new WoocommerceProducts();
             outputProduct.ID = "";
             outputProduct.Type = "simple";
-            outputProduct.SKU = inputProduct.SKU;
+            outputProduct.SKU = "";
             outputProduct.Name = inputProduct.Title;
             outputProduct.Published = "1";
             outputProduct.Isfeatured = "0";
@@ -36,7 +38,7 @@ namespace ShopeeCrawler
             outputProduct.Width = "";
             outputProduct.AllowCustomerReviews = "1";
             outputProduct.PurchaseNote = "";
-            outputProduct.SalePrice = inputProduct.SalePrice;
+            outputProduct.SalePrice = "";
             outputProduct.RegularPrice = inputProduct.RegularPrice;
             outputProduct.Categories = inputProduct.Categories;
             outputProduct.Tags = "";
@@ -62,7 +64,9 @@ namespace ShopeeCrawler
 
             browser.Navigate().GoToUrl("https://shopee.vn");
 
-            System.Threading.Thread.Sleep(1000);
+            
+
+            System.Threading.Thread.Sleep(2000);
             var closePopUpBtn = browser.FindElement(By.CssSelector(".shopee-popup__close-btn"));
 
             closePopUpBtn.Click();
@@ -75,7 +79,16 @@ namespace ShopeeCrawler
 
             List<string> listProductLink = new List<string>();
 
-            System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(2000);
+
+            // move to bottom element to load full page
+            Actions action = new Actions(browser);
+            var bottomElement = browser.FindElement(By.CssSelector(".Pca2IN"));
+            action.MoveToElement(bottomElement);
+            action.Perform();
+
+            System.Threading.Thread.Sleep(4000);
+
 
             var productsElements = browser.FindElements(By.CssSelector(".shopee-search-item-result__item"));
 
@@ -90,82 +103,119 @@ namespace ShopeeCrawler
                 
             }
 
-            foreach(var link in listProductLink)
+            List<WoocommerceProducts> listProduct = new List<WoocommerceProducts>();
+
+
+            foreach (var link in listProductLink)
             {
-                browser.Navigate().GoToUrl(link);
-
-
-
-                // Product title
-                string html = browser.PageSource;
-
-                string productTitle = Regex.Match(html, "@type\":\"Product\",\"name\":\"(.*?)\"").Groups[1].Value;
-
-                // Size
-
-                // Color
-                //Giá sản phẩm
-
-                string productPrice = browser.FindElement(By.CssSelector("._3e_UQT")).Text.Replace("₫","");
-
-                //string productPrice = Regex.Match(html, "current-price item-card-special__current-price--special\">₫(.*?)</div></").Groups[1].Value;
-
-                if (productPrice.Contains("-"))
+                if(link != "https://shopee.vn")
                 {
-                    productPrice = Regex.Match(productPrice, "(.*?) -").Groups[1].Value;
-                }
-                //Ảnh sản phẩm 1
-                List<string> productImageList = new List<string>();
-                var listImageElement = browser.FindElements(By.CssSelector("._12uy03"));
-                if(listImageElement.Count > 0)
-                {
-                    foreach(var imageElement in listImageElement)
+                    browser.Navigate().GoToUrl(link);
+
+                    // Wait for the internet
+                    System.Threading.Thread.Sleep(2000);
+
+                    // move to bottom element to load full page
+                    Actions action2 = new Actions(browser);
+                    var bottomElement2 = browser.FindElement(By.CssSelector(".Pca2IN"));
+                    action2.MoveToElement(bottomElement2);
+                    action2.Perform();
+
+
+                    ShoppeProducts result = new ShoppeProducts();
+
+                    // Product title
+                    string html = browser.PageSource;
+
+                    string productTitle = Regex.Match(html, "@type\":\"Product\",\"name\":\"(.*?)\"").Groups[1].Value;
+
+                    // Size
+
+                    // Color
+                    //Giá sản phẩm
+
+                    string productPrice = browser.FindElement(By.CssSelector("._3e_UQT")).Text.Replace("₫", "");
+
+                    //string productPrice = Regex.Match(html, "current-price item-card-special__current-price--special\">₫(.*?)</div></").Groups[1].Value;
+
+                    if (productPrice.Contains("-"))
                     {
-                        string style = imageElement.GetAttribute("style");
-                        string bg = Regex.Match(style, "background-image: url\\(\"(.*?)_tn\"\\); background-size: contain; background-repeat: no-repeat;").Groups[1].Value;
-                        productImageList.Add(bg);
+                        productPrice = Regex.Match(productPrice, "(.*?) -").Groups[1].Value;
+                    }
+
+                    //Ảnh sản phẩm 
+                    List<string> productImageList = new List<string>();
+                    var listImageElement = browser.FindElements(By.CssSelector("._12uy03"));
+                    string productImage = "";
+                    if (listImageElement.Count > 0)
+                    {
+                        foreach (var imageElement in listImageElement)
+                        {
+                            string style = imageElement.GetAttribute("style");
+                            string bg = Regex.Match(style, "background-image: url\\(\"(.*?)_tn\"\\); background-size: contain; background-repeat: no-repeat;").Groups[1].Value;
+                            productImageList.Add(bg);
+
+                        }
+                        productImage = String.Join(", ", productImageList.ToArray());
 
                     }
-                    string productImage = String.Join(", ", productImageList.ToArray());
-                }
-                //Ảnh sản phẩm 2
-                //Ảnh sản phẩm 3
-                //Ảnh sản phẩm 4
-                //Danh mục
-                List<string> listCategory = new List<string>();
-                var categories = browser.FindElements(By.CssSelector("._3YDLCj._3LWINq"));
-                string productCategory = "";
-                for (int j = 1; j < categories.Count; j++)
-                {
-                    string categoryItem;
-                    if (j != categories.Count - 1)
+
+                    //Danh mục
+                    List<string> listCategory = new List<string>();
+                    var categories = browser.FindElements(By.CssSelector("._3YDLCj._3LWINq"));
+                    string productCategory = "";
+                    for (int j = 1; j < categories.Count; j++)
                     {
-                        categoryItem = categories[j].Text + ">";
+                        string categoryItem;
+                        if (j != categories.Count - 1)
+                        {
+                            categoryItem = categories[j].Text + ">";
+                        }
+                        else
+                        {
+                            categoryItem = categories[j].Text;
+                        }
+                        productCategory += categoryItem;
                     }
-                    else
+
+                    //Thương hiệu
+                    string productBrand = browser.FindElements(By.XPath("//label[text()='Thương hiệu']/following-sibling::div"))[0].Text;
+
+                    //Gửi từ
+                    /*var productSendFromElement = browser.FindElements(By.XPath("//label[text()='Gửi từ']/following-sibling::div"));
+                    string productSendFrom = "";
+                    if(productSendFromElement.Count > 0)
                     {
-                        categoryItem = categories[j].Text;
-                    }
-                    productCategory += categoryItem;
+                        productSendFrom = productSendFromElement[0].Text;
+                    }*/
+
+                    //Mô tả sản phẩm
+                    string productDescription = browser.FindElements(By.XPath("//div[@class='_3yZnxJ']/child::span"))[0].Text;
+                    productDescription = productDescription.Replace("\n", " ").Replace("\r", " ").Replace("\r\n", " ");
+
+
+                    //Đánh giá sản phẩm
+                    //string productRating = browser.FindElement(By.CssSelector(".product-rating-overview__rating-score")).Text;
+                    //string rating = Regex.Match(html, "\"ratingValue\":\"(\\d.*?)\"}}</sc").Groups[1].Value;
+
+                    //Link sản phẩm
+
+                    // Add all information to Shopee Object
+                    result.Title = productTitle;
+                    result.RegularPrice = productPrice;
+                    result.ProductBrand = productBrand;
+                    result.Categories = productCategory;
+                    result.Images = productImage;
+
+                    Program program = new Program();
+
+                    listProduct.Add(program.mapDataToWooCommerce(result));
+                    System.Threading.Thread.Sleep(1000);
                 }
-                //Thương hiệu
-                string productBrand = browser.FindElements(By.XPath("//label[text()='Thương hiệu']/following-sibling::div"))[0].Text;
-                //Gửi từ
-                string productSendFrom = browser.FindElements(By.XPath("//label[text()='Gửi từ']/following-sibling::div"))[0].Text;
-
-
-                //Mô tả sản phẩm
-                string productDescription = browser.FindElements(By.XPath("//div[@class='_3yZnxJ']/child::span"))[0].Text;
-                productDescription = productDescription.Replace("\n", " ").Replace("\r", " ").Replace("\r\n", " ");
-
-
-                //Đánh giá sản phẩm
-                string productRating = browser.FindElement(By.CssSelector(".product-rating-overview__rating-score")).Text;
-                string rating = Regex.Match(html, "\"ratingValue\":\"(\\d.*?)\"}}</sc").Groups[1].Value;
-                //Link sản phẩm
-                string a = "VI XINH DEP CUA ANH HUYNH";
-
+                
             }
+            var engine = new FileHelperEngine<WoocommerceProducts>();
+            engine.WriteFile("F:/output.txt", listProduct);
 
 
 
